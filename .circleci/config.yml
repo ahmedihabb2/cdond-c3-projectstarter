@@ -169,11 +169,12 @@ jobs:
             apk add --update ansible
             apk add --update tar
             apk add --update gzip
-            apk add --update awscli
+            pip install awscli
       - run:
           name: Configure server
           command: |
-            ansible-playbook -i ~/inventory.txt .circleci/ansible/configure-server.yml
+            cd .circleci/ansible
+            ansible-playbook -i inventory.txt configure-server.yml
       # Here's where you will add some code to rollback on failure 
       - destroy-environment     
 
