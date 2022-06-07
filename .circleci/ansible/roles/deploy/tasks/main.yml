@@ -1,0 +1,10 @@
+- name: "Unarchive files and move to ec2"
+  unarchive:
+    src: ~/project/backend.tar.gz
+    dest: /home/ubuntu/
+
+
+- name: "start server"
+  command: pm2 start main.js --name=backend
+  args:
+    chdir: /home/ubuntu/backend/dist
