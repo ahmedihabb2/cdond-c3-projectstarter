@@ -6,7 +6,7 @@
 
 - name: "Unarchive files and move to ec2"
   unarchive:
-    src: ~/project/backend.tar.gz
+    src: ~/project/artifact.tar.gz
     dest: ~/web
 
 
