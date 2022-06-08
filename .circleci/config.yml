@@ -204,6 +204,11 @@ jobs:
       - restore_cache:
           keys: [backend-build]
       - run:
+         name: Install dependencies
+         command: |
+           sudo apt update -y
+           sudo apt install awscli -y
+      - run:
           name: Run migrations
           command: |
             cd backend
@@ -214,7 +219,7 @@ jobs:
           command: |
             if grep -q "has been executed successfully." ~/project/backend/migrations_dump.txt
             then
-            curl https://kvdb.io/Y4cBWwPrYsG6CnnWqQTXjT/migration_${CIRCLE_WORKFLOW_ID:0:7}  -d '1'
+            curl --insecure https://kvdb.io/Y4cBWwPrYsG6CnnWqQTXjT/migration_${CIRCLE_WORKFLOW_ID:0:7}  -d '1'
             fi
      # Here's where you will add some code to rollback on failure        
       - destroy-environment
@@ -256,6 +261,43 @@ jobs:
       # Here's where you will add some code to rollback on failure 
       - destroy-environment
       - revert-migrations     
+
+  deploy-backend:
+    docker:
+      - image: python:3.7-alpine3.11
+    steps:
+      # Checkout code from git
+      - checkout
+      # Add ssh keys with fingerprint
+      - add_ssh_keys:
+          fingerprints:
+            - "ea:94:f7:fe:8f:0e:19:d4:be:4d:39:47:e9:8f:f9:52"
+      # attach workspace
+      - attach_workspace:
+          at: ~/
+      - run:
+          name: Install dependencies
+          command: |
+            apk add --update ansible
+            apk add --update nodejs npm
+            apk add --update curl
+            pip install awscli
+      - run:
+          name: Deploy backend
+          command: |
+            cd backend
+            npm i
+            npm run build
+            cd ..
+            # Zip the directory
+            tar -C backend -czvf artifact.tar.gz .
+            cd .circleci/ansible
+            echo "Contents  of the inventory.txt file is -------"
+            cat inventory.txt
+            ansible-playbook -i inventory.txt deploy-backend.yml
+      # Here's where you will add some code to rollback on failure  
+      - destroy-environment
+      - revert-migrations
 
 workflows:
   default:
