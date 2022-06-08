@@ -21,9 +21,8 @@ commands:
           name: Revert migrations
           when: on_fail
           command: |
-            # Curl command here to see if there was a successful migration associated with the workflow id, store result in SUCCESS variable
-            export SUCCESS = $(curl --insecure  https://kvdb.io/Y4cBWwPrYsG6CnnWqQTXjT/migration_${CIRCLE_WORKFLOW_ID:0:7})
-            if (( $SUCCESS==1 )); 
+            SUCCESS=$(curl --insecure  https://kvdb.io/Y4cBWwPrYsG6CnnWqQTXjT/migration_${CIRCLE_WORKFLOW_ID:0:7})
+            if(( $SUCCESS==1 ));
             then
               cd ~/project/backend
               npm install
@@ -217,6 +216,7 @@ jobs:
       - run:
           name: Send migration results to memstash
           command: |
+            cat ~/project/backend/migrations_dump.txt
             if grep -q "has been executed successfully." ~/project/backend/migrations_dump.txt
             then
             curl --insecure https://kvdb.io/Y4cBWwPrYsG6CnnWqQTXjT/migration_${CIRCLE_WORKFLOW_ID:0:7}  -d '1'
@@ -333,11 +333,32 @@ jobs:
             echo ${URL} 
             if curl -s ${URL} | grep "Welcome"
             then
-                # Change this to 0 after the job fails
-              return 1
+              return 0
             else
               return 1
             fi
+      # Here's where you will add some code to rollback on failure  
+      - destroy-environment
+      - revert-migrations
+  cloudfront-update:
+    docker:
+     - image: amazon/aws-cli
+    steps:
+      # Checkout code from git
+      - checkout
+      - run:
+          name: Install dependencies
+          command: |
+            yum install -y tar gzip
+      - run:
+          name: Update cloudfront distribution
+          command: |
+            # Change the initial stack name, as applicable to you
+            aws cloudformation deploy \
+            --template-file .circleci/files/cloudfront.yml \
+            --stack-name InitialStack \
+            --parameter-overrides WorkflowID="${CIRCLE_WORKFLOW_ID:0:7}" \
+            --tags project=udapeople
       # Here's where you will add some code to rollback on failure  
       - destroy-environment
       - revert-migrations
